@@ -5,13 +5,16 @@ import (
 	"net/http"
 	"mini-feed/internal/models"
 	"github.com/google/uuid"
-	"mini-feed/internal/events"
+
+	"context"
+	"github.com/redis/go-redis/v9"
 )
 
 type Handler struct {
 	store interface {
 		CreatePost(*models.Post) error
 	}
+	rdb *redis.Client
 }
 
 func GenerateID() string {
@@ -21,8 +24,8 @@ func GenerateID() string {
 
 func NewHandler(store interface {
 		CreatePost(*models.Post) error
-	}) *Handler {
-		return &Handler{store: store}
+	}, rdb *redis.Client) *Handler {
+		return &Handler{store: store, rdb: rdb}
 	}
 
 func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
@@ -45,7 +48,9 @@ func (h *Handler) CreatePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	data, _ := json.Marshal(post)
+	h.rdb.Publish(context.Background(), "post_created", data)
+
 	json.NewEncoder(w).Encode(post)
-	events.PostEventChannel <- post
 
 }

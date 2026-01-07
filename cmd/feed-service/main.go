@@ -1,24 +1,12 @@
 package main
 
-// import (
-// 	// "encoding/json"
-// 	"log"
-// 	"net/http"
-// 	// "time"
-
-// 	// badger "github.com/dgraph-io/badger/v4"
-
-// 	// "mini-feed/internal/events"
-// 	"mini-feed/internal/models"
-// 	badgerdb "mini-feed/internal/storage/badger"
-// 	"mini-feed/internal/services/fanout"
-// )
 
 import (
     "log"
     "net/http"
 
     "github.com/dgraph-io/badger/v4"
+	"github.com/redis/go-redis/v9"
 
     "mini-feed/internal/services/fanout"
     "mini-feed/internal/services/feed"
@@ -32,11 +20,15 @@ func main() {
 	}
 	defer db.Close()
 
+	rdb := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+
 	feedStore := badgerdb.NewFeedStore(db)
 
 	followStore := badgerdb.NewFollowStore(db)
 
-	fanout.StartWorker(followStore, feedStore)
+	fanout.StartWorker(followStore, feedStore, rdb)
 
 	handler := feed.NewHandler(feedStore)
 

@@ -1,7 +1,11 @@
 package user
 
 import (
+	"context"
+	"encoding/json"
 	"net/http"
+
+	"github.com/redis/go-redis/v9"
 )
 
 type Handler struct {
@@ -9,13 +13,14 @@ type Handler struct {
 		CreateUser(string) error
 		Follow(string, string) error
 	}
+	rdb *redis.Client
 }
 
 func NewHandler(store interface {
 		CreateUser(string) error
 		Follow(string, string) error
-	}) *Handler {
-		return &Handler{store: store}
+	}, rdb *redis.Client) *Handler {
+		return &Handler{store: store, rdb: rdb}
 	}
 
 func (h *Handler) CreateUser(w http.ResponseWriter, r *http.Request) {
@@ -38,5 +43,11 @@ func (h *Handler) Follow(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.store.Follow(u, v)
+
+	event := map[string]string{"follower": u, "followee": v}
+	data, _ := json.Marshal(event)
+	h.rdb.Publish(context.Background(), "user_followed", data)
+
+
 	w.Write([]byte("followed"))
 }

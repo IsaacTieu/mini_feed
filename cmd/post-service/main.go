@@ -3,6 +3,8 @@ package main
 import (
 	"log"
 	"net/http"
+
+	"github.com/redis/go-redis/v9"
 	badgerdb "mini-feed/internal/storage/badger"
 	"mini-feed/internal/services/post"
 )
@@ -14,8 +16,12 @@ func main() {
 	}
 	defer db.Close()
 
+	rdb := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+
 	store := badgerdb.NewPostStore(db)
-	handler := post.NewHandler(store)
+	handler := post.NewHandler(store, rdb)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", func(w http.ResponseWriter, _ *http.Request) {
